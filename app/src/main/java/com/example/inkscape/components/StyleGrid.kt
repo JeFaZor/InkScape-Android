@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,38 +48,17 @@ fun StyleGrid(
         TattooStyle("Trash Polka", R.drawable.tat12)
     )
 
-    var visibleItems by remember { mutableStateOf(4) } // התחל עם 4 פריטים
-
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier.heightIn(max = 500.dp)
+        modifier = modifier.heightIn(max = 600.dp)
     ) {
-        items(styles.take(visibleItems)) { style ->
+        items(styles) { style ->
             StyleCard(
                 style = style,
                 onStyleSelected = onStyleSelected
             )
-        }
-
-        // כפתור "Show More" אם יש עוד פריטים
-        if (visibleItems < styles.size) {
-            item(span = { GridItemSpan(2) }) {
-                TextButton(
-                    onClick = { visibleItems += 4 },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                ) {
-                    Text(
-                        "Show More Styles",
-                        color = Color(0xFF9C27B0),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
         }
     }
 }

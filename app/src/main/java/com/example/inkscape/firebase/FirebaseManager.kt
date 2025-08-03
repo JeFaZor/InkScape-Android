@@ -3,6 +3,7 @@ package com.example.inkscape.firebase
 import android.net.Uri
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.tasks.await
 import java.util.*
 
@@ -11,23 +12,21 @@ data class ArtistProfile(
     val profileImageUrl: String = "",
     val workImageUrls: List<String> = emptyList(),
     val styles: List<String> = emptyList(),
-    val location: String = "", // "Tel Aviv, Israel"
-    val placeId: String = "", // Google Place ID
-    val address: String = "", // Full address
+    val location: String = "",
+    val placeId: String = "",
+    val address: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
 
 class FirebaseManager {
     private val storage = FirebaseStorage.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
 
     private val storageRef = storage.reference
     private val artistsCollection = firestore.collection("artists")
 
-    /**
-     * Upload image to Firebase Storage
-     */
-    suspend fun uploadImage(imageUri: Uri, path: String): String {
+    private suspend fun uploadImage(imageUri: Uri, path: String): String {
         return try {
             val imageRef = storageRef.child(path)
             val uploadTask = imageRef.putFile(imageUri).await()
@@ -38,26 +37,24 @@ class FirebaseManager {
         }
     }
 
-    /**
-     * Create complete artist profile with images and data
-     */
     suspend fun createArtistProfile(
+        email: String,
+        password: String,
         profileImageUri: Uri?,
         workImageUris: List<Uri?>,
         selectedStyles: List<String>,
-        location: String? = null,
-        placeId: String? = null,
-        address: String? = null
+        location: String? = null
     ): String {
         return try {
-            val artistId = UUID.randomUUID().toString()
+            val authResult = auth.createUserWithEmailAndPassword(email, password).await()
+            val user = authResult.user ?: throw Exception("Failed to create user")
 
-            // 1. Upload profile image
+            val artistId = user.uid
+
             val profileImageUrl = if (profileImageUri != null) {
                 uploadImage(profileImageUri, "artists/$artistId/profile.jpg")
             } else ""
 
-            // 2. Upload work images
             val workImageUrls = mutableListOf<String>()
             workImageUris.forEachIndexed { index, uri ->
                 if (uri != null) {
@@ -66,29 +63,30 @@ class FirebaseManager {
                 }
             }
 
-            // 3. Create artist profile object
             val artistProfile = ArtistProfile(
                 id = artistId,
                 profileImageUrl = profileImageUrl,
                 workImageUrls = workImageUrls,
                 styles = selectedStyles,
-                location = location ?: "",
-                placeId = placeId ?: "",
-                address = address ?: ""
+                location = location ?: ""
             )
 
-            // 4. Save to Firestore
             artistsCollection.document(artistId).set(artistProfile).await()
-
             artistId
         } catch (e: Exception) {
             throw Exception("Failed to create artist profile: ${e.message}")
         }
     }
 
-    /**
-     * Get all artists from database
-     */
+    suspend fun signIn(email: String, password: String): String {
+        return try {
+            val authResult = auth.signInWithEmailAndPassword(email, password).await()
+            authResult.user?.uid ?: throw Exception("Login failed")
+        } catch (e: Exception) {
+            throw Exception("Login failed: ${e.message}")
+        }
+    }
+
     suspend fun getAllArtists(): List<ArtistProfile> {
         return try {
             val snapshot = artistsCollection.get().await()
@@ -100,9 +98,6 @@ class FirebaseManager {
         }
     }
 
-    /**
-     * Search artists by tattoo style
-     */
     suspend fun getArtistsByStyle(style: String): List<ArtistProfile> {
         return try {
             val snapshot = artistsCollection
@@ -115,29 +110,6 @@ class FirebaseManager {
             }
         } catch (e: Exception) {
             emptyList()
-        }
-    }
-
-    /**
-     * Delete artist profile (for development purposes)
-     */
-    suspend fun deleteArtistProfile(artistId: String): Boolean {
-        return try {
-            // Delete document from Firestore
-            artistsCollection.document(artistId).delete().await()
-
-            // Delete images from Storage
-            val artistStorageRef = storageRef.child("artists/$artistId")
-            try {
-                // Try to delete the folder (doesn't always work)
-                artistStorageRef.delete().await()
-            } catch (e: Exception) {
-                // If deletion fails, it's okay - not critical
-            }
-
-            true
-        } catch (e: Exception) {
-            false
         }
     }
 }

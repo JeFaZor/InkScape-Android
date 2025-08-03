@@ -16,15 +16,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import com.example.inkscape.R
 import com.example.inkscape.components.StyleGrid
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun HomeScreen(
-    onSignInClick: () -> Unit = {} // הוסף את הפרמטר הזה
+    onSignInClick: () -> Unit = {},
+    onSignUpClick: () -> Unit = {}
 ) {
     var searchText by remember { mutableStateOf("") }
     var showStylePicker by remember { mutableStateOf(false) }
@@ -35,7 +37,7 @@ fun HomeScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Sign In button (top right)
+        // Sign In/Up buttons (top right)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -43,12 +45,12 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.End
         ) {
             OutlinedButton(
-                onClick = onSignInClick, // שנה את זה מהקומנט להשתמש בפרמטר
+                onClick = onSignInClick,
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color.Transparent,
                     contentColor = Color.White
                 ),
-                border = androidx.compose.foundation.BorderStroke(
+                border = BorderStroke(
                     width = 1.dp,
                     color = Color(0xFF9C27B0)
                 ),
@@ -62,19 +64,47 @@ fun HomeScreen(
                     fontWeight = FontWeight.Medium
                 )
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Button(
+                onClick = onSignUpClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF9C27B0)
+                ),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.height(36.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+            ) {
+                Text(
+                    text = "Sign Up",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 48.dp),
+                .padding(horizontal = 24.dp, vertical = 48.dp)
+                .animateContentSize(
+                    animationSpec = tween(
+                        durationMillis = 400,
+                        easing = FastOutSlowInEasing
+                    )
+                ),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = if (showStylePicker) Arrangement.Top else Arrangement.Center
         ) {
 
-            Spacer(modifier = Modifier.weight(1f))
+            if (!showStylePicker) {
+                Spacer(modifier = Modifier.weight(1f))
+            } else {
+                Spacer(modifier = Modifier.height(80.dp))
+            }
 
-            // Logo
+            // Logo (always visible)
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "InkScape Logo",
@@ -83,35 +113,54 @@ fun HomeScreen(
                     .padding(bottom = 32.dp)
             )
 
-            // Main title
-            Text(
-                text = "Find Your Perfect",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                lineHeight = 42.sp
-            )
+            // Title and subtitle with animation
+            AnimatedVisibility(
+                visible = !showStylePicker,
+                enter = fadeIn(
+                    animationSpec = tween(300, delayMillis = 100)
+                ) + expandVertically(
+                    animationSpec = tween(400)
+                ),
+                exit = fadeOut(
+                    animationSpec = tween(200)
+                ) + shrinkVertically(
+                    animationSpec = tween(300)
+                )
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Main title
+                    Text(
+                        text = "Find Your Perfect",
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 42.sp
+                    )
 
-            Text(
-                text = "Tattoo Artist",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF9C27B0),
-                textAlign = TextAlign.Center,
-                lineHeight = 42.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+                    Text(
+                        text = "Tattoo Artist",
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF9C27B0),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 42.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
 
-            // Subtitle
-            Text(
-                text = "Discover talented tattoo artists based on their unique styles and specialties. Search by location or explore to find the perfect match.",
-                fontSize = 16.sp,
-                color = Color(0xFFD1C4E9),
-                textAlign = TextAlign.Center,
-                lineHeight = 22.sp,
-                modifier = Modifier.padding(bottom = 48.dp)
-            )
+                    // Subtitle
+                    Text(
+                        text = "Discover talented tattoo artists based on their unique styles and specialties. Search by location or explore to find the perfect match.",
+                        fontSize = 16.sp,
+                        color = Color(0xFFD1C4E9),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 22.sp,
+                        modifier = Modifier.padding(bottom = 48.dp)
+                    )
+                }
+            }
 
             // Search field
             OutlinedTextField(
@@ -184,15 +233,22 @@ fun HomeScreen(
             ) {
                 // Style button
                 OutlinedButton(
-                    onClick = { showStylePicker = !showStylePicker },
+                    onClick = {
+                        showStylePicker = !showStylePicker
+                        if (!showStylePicker) {
+                            selectedStyle = null
+                        }
+                    },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (selectedStyle != null) Color(0x30FFFFFF) else Color.Transparent,
+                        containerColor = if (selectedStyle != null || showStylePicker)
+                            Color(0x30FFFFFF) else Color.Transparent,
                         contentColor = Color.White
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         width = 1.dp,
-                        color = if (selectedStyle != null) Color(0xFF9C27B0) else Color(0xFF424242)
+                        color = if (selectedStyle != null || showStylePicker)
+                            Color(0xFF9C27B0) else Color(0xFF424242)
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -211,7 +267,7 @@ fun HomeScreen(
                         containerColor = Color.Transparent,
                         contentColor = Color.White
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         width = 1.dp,
                         color = Color(0xFF424242)
                     ),
@@ -226,28 +282,47 @@ fun HomeScreen(
             }
 
             // Style picker (when expanded)
-            if (showStylePicker) {
-                Spacer(modifier = Modifier.height(24.dp))
-
-                StyleGrid(
-                    onStyleSelected = { style ->
-                        selectedStyle = style
-                        showStylePicker = false
-                    },
-                    modifier = Modifier.fillMaxWidth()
+            AnimatedVisibility(
+                visible = showStylePicker,
+                enter = fadeIn(
+                    animationSpec = tween(300, delayMillis = 200)
+                ) + expandVertically(
+                    animationSpec = tween(400)
+                ),
+                exit = fadeOut(
+                    animationSpec = tween(200)
+                ) + shrinkVertically(
+                    animationSpec = tween(300)
                 )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    StyleGrid(
+                        onStyleSelected = { style ->
+                            selectedStyle = style
+                            showStylePicker = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            // Dynamic spacer for bottom
+            if (!showStylePicker) {
+                Spacer(modifier = Modifier.weight(1f))
 
-            // Bottom text
-            Text(
-                text = "Join thousands of tattoo enthusiasts finding their perfect artist",
-                fontSize = 14.sp,
-                color = Color(0xFF9E9E9E),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+                // Bottom text
+                Text(
+                    text = "Join thousands of tattoo enthusiasts finding their perfect artist",
+                    fontSize = 14.sp,
+                    color = Color(0xFF9E9E9E),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            } else {
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
     }
 }

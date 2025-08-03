@@ -20,6 +20,9 @@ fun MainScreen() {
             HomeScreen(
                 onSignInClick = {
                     navController.navigate("auth")
+                },
+                onSignUpClick = {
+                    navController.navigate("artist_signup")
                 }
             )
         }
@@ -30,8 +33,9 @@ fun MainScreen() {
                     navController.popBackStack()
                 },
                 onAuthSuccess = {
-                    // עבור למסך הגדרת פרופיל מקעקע
-                    navController.navigate("artist_signup")
+                    navController.navigate("home") {
+                        popUpTo("home") { inclusive = true }
+                    }
                 }
             )
         }
@@ -42,7 +46,6 @@ fun MainScreen() {
                     navController.popBackStack()
                 },
                 onSignUpComplete = {
-                    // חזור לדף הבית אחרי השלמת הרשמה
                     navController.navigate("home") {
                         popUpTo("home") { inclusive = true }
                     }
