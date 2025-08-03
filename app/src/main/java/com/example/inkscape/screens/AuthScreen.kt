@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
@@ -22,7 +23,10 @@ import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AuthScreen() {
+fun AuthScreen(
+    onBackClick: () -> Unit = {},
+    onAuthSuccess: () -> Unit = {}
+) {
     var isSignUp by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -34,6 +38,20 @@ fun AuthScreen() {
             .fillMaxSize()
             .background(Color.Black)
     ) {
+        // Back button - הוסף כפתור חזרה
+        IconButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .padding(16.dp)
+                .size(40.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ArrowBack,
+                contentDescription = "Back",
+                tint = Color.White
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -158,7 +176,8 @@ fun AuthScreen() {
             // Action button
             Button(
                 onClick = {
-                    // TODO: Handle auth
+                    // כרגע פשוט נדמה הצלחה - בהמשך נוסיף לוגיקה אמיתית
+                    onAuthSuccess()
                 },
                 modifier = Modifier
                     .fillMaxWidth()

@@ -1,1 +1,8 @@
 /build
+/src/main/java/
+/src/androidTest/java/
+/src/test/java/
+
+# Firebase
+app/google-services.json
+**/google-services.json

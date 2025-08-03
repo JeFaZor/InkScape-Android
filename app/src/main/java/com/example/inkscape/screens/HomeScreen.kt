@@ -23,7 +23,9 @@ import com.example.inkscape.components.StyleGrid
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    onSignInClick: () -> Unit = {} // הוסף את הפרמטר הזה
+) {
     var searchText by remember { mutableStateOf("") }
     var showStylePicker by remember { mutableStateOf(false) }
     var selectedStyle by remember { mutableStateOf<String?>(null) }
@@ -41,7 +43,7 @@ fun HomeScreen() {
             horizontalArrangement = Arrangement.End
         ) {
             OutlinedButton(
-                onClick = { /* TODO: Navigate to AuthScreen */ },
+                onClick = onSignInClick, // שנה את זה מהקומנט להשתמש בפרמטר
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color.Transparent,
                     contentColor = Color.White
