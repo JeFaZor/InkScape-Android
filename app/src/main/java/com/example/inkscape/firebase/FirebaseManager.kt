@@ -6,6 +6,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.tasks.await
 import java.util.*
+import kotlin.math.*
 
 data class ArtistProfile(
     val id: String = "",
@@ -15,6 +16,9 @@ data class ArtistProfile(
     val location: String = "",
     val placeId: String = "",
     val address: String = "",
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val studioName: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -43,7 +47,12 @@ class FirebaseManager {
         profileImageUri: Uri?,
         workImageUris: List<Uri?>,
         selectedStyles: List<String>,
-        location: String? = null
+        location: String? = null,
+        placeId: String? = null,
+        address: String? = null,
+        latitude: Double = 0.0,
+        longitude: Double = 0.0,
+        studioName: String? = null
     ): String {
         return try {
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
@@ -68,7 +77,12 @@ class FirebaseManager {
                 profileImageUrl = profileImageUrl,
                 workImageUrls = workImageUrls,
                 styles = selectedStyles,
-                location = location ?: ""
+                location = location ?: "",
+                placeId = placeId ?: "",
+                address = address ?: "",
+                latitude = latitude,
+                longitude = longitude,
+                studioName = studioName ?: ""
             )
 
             artistsCollection.document(artistId).set(artistProfile).await()
@@ -110,6 +124,65 @@ class FirebaseManager {
             }
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    suspend fun getArtistsByLocation(
+        centerLatitude: Double,
+        centerLongitude: Double,
+        radiusKm: Double
+    ): List<ArtistProfile> {
+        return try {
+            val allArtists = getAllArtists()
+
+            allArtists.filter { artist ->
+                if (artist.latitude == 0.0 && artist.longitude == 0.0) {
+                    false
+                } else {
+                    val distance = calculateDistance(
+                        centerLatitude, centerLongitude,
+                        artist.latitude, artist.longitude
+                    )
+                    distance <= radiusKm
+                }
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun calculateDistance(
+        lat1: Double, lon1: Double,
+        lat2: Double, lon2: Double
+    ): Double {
+        val earthRadius = 6371.0
+
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLon / 2) * sin(dLon / 2)
+
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return earthRadius * c
+    }
+
+    suspend fun deleteArtistProfile(artistId: String): Boolean {
+        return try {
+            artistsCollection.document(artistId).delete().await()
+
+            val artistStorageRef = storageRef.child("artists/$artistId")
+            try {
+                artistStorageRef.delete().await()
+            } catch (e: Exception) {
+                // Continue even if storage deletion fails
+            }
+
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 }

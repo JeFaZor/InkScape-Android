@@ -18,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,12 +26,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.inkscape.firebase.FirebaseManager
+import com.example.inkscape.components.LocationPicker
+import com.example.inkscape.components.SelectedLocation
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,13 +41,12 @@ fun ArtistSignUpScreen(
     onBackClick: () -> Unit = {},
     onSignUpComplete: () -> Unit = {}
 ) {
-    var firstName by remember { mutableStateOf("") }
-    var lastName by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
     var workImages by remember { mutableStateOf(listOf<Uri?>(null, null, null)) }
     var selectedStyles by remember { mutableStateOf<List<String>>(emptyList()) }
+    var selectedLocation by remember { mutableStateOf<SelectedLocation?>(null) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var isUploading by remember { mutableStateOf(false) }
     var uploadStatus by remember { mutableStateOf("") }
 
@@ -80,17 +79,23 @@ fun ArtistSignUpScreen(
         scope.launch {
             try {
                 isUploading = true
-                uploadStatus = "Creating account..."
+                uploadStatus = "Uploading profile..."
 
                 val artistId = firebaseManager.createArtistProfile(
                     email = email,
                     password = password,
                     profileImageUri = profileImageUri,
                     workImageUris = workImages,
-                    selectedStyles = selectedStyles
+                    selectedStyles = selectedStyles,
+                    location = selectedLocation?.address,
+                    placeId = null,
+                    address = selectedLocation?.address,
+                    latitude = selectedLocation?.latitude ?: 0.0,
+                    longitude = selectedLocation?.longitude ?: 0.0,
+                    studioName = null
                 )
 
-                uploadStatus = "Success! Profile created!"
+                uploadStatus = "Success! Profile created with ID: $artistId"
                 kotlinx.coroutines.delay(2000)
                 onSignUpComplete()
             } catch (e: Exception) {
@@ -166,103 +171,6 @@ fun ArtistSignUpScreen(
                         )
                     }
                 }
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = firstName,
-                        onValueChange = { firstName = it },
-                        label = { Text("First Name") },
-                        modifier = Modifier.weight(1f),
-                        enabled = !isUploading,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF9C27B0),
-                            unfocusedBorderColor = Color(0xFF424242),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedLabelColor = Color(0xFF9C27B0),
-                            unfocusedLabelColor = Color(0xFFBDBDBD),
-                            cursorColor = Color(0xFF9C27B0)
-                        )
-                    )
-
-                    OutlinedTextField(
-                        value = lastName,
-                        onValueChange = { lastName = it },
-                        label = { Text("Last Name") },
-                        modifier = Modifier.weight(1f),
-                        enabled = !isUploading,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF9C27B0),
-                            unfocusedBorderColor = Color(0xFF424242),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedLabelColor = Color(0xFF9C27B0),
-                            unfocusedLabelColor = Color(0xFFBDBDBD),
-                            cursorColor = Color(0xFF9C27B0)
-                        )
-                    )
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(16.dp)) }
-
-            item {
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Email,
-                            contentDescription = "Email",
-                            tint = Color(0xFF9C27B0)
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    enabled = !isUploading,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF9C27B0),
-                        unfocusedBorderColor = Color(0xFF424242),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = Color(0xFF9C27B0),
-                        unfocusedLabelColor = Color(0xFFBDBDBD),
-                        cursorColor = Color(0xFF9C27B0)
-                    )
-                )
-            }
-
-            item {
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Password") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 32.dp),
-                    enabled = !isUploading,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF9C27B0),
-                        unfocusedBorderColor = Color(0xFF424242),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = Color(0xFF9C27B0),
-                        unfocusedLabelColor = Color(0xFFBDBDBD),
-                        cursorColor = Color(0xFF9C27B0)
-                    )
-                )
             }
 
             item {
@@ -381,6 +289,27 @@ fun ArtistSignUpScreen(
                     modifier = Modifier.padding(bottom = 32.dp)
                 ) {
                     Text(
+                        text = "Studio Location",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    LocationPicker(
+                        onLocationSelected = { location ->
+                            selectedLocation = location
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.padding(bottom = 32.dp)
+                ) {
+                    Text(
                         text = "Your Specialties (Choose up to 3)",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -456,8 +385,7 @@ fun ArtistSignUpScreen(
             item {
                 Button(
                     onClick = { uploadToFirebase() },
-                    enabled = firstName.isNotEmpty() && lastName.isNotEmpty() &&
-                            email.isNotEmpty() && password.isNotEmpty() && !isUploading,
+                    enabled = canComplete(profileImageUri, workImages, selectedStyles, selectedLocation) && !isUploading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -485,4 +413,16 @@ fun ArtistSignUpScreen(
             item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
+}
+
+private fun canComplete(
+    profileImage: Uri?,
+    workImages: List<Uri?>,
+    selectedStyles: List<String>,
+    selectedLocation: SelectedLocation?
+): Boolean {
+    return profileImage != null &&
+            workImages.any { it != null } &&
+            selectedStyles.isNotEmpty() &&
+            selectedLocation != null
 }
