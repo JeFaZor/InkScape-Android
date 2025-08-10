@@ -41,12 +41,13 @@ fun LocationSearchFilter(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val radiusValues = listOf(2, 5, 10, 15, 20, 25, 30, 35, 40)
 
     // Default: Tel Aviv
     val telAvivLocation = LatLng(32.0853, 34.7818)
 
     var selectedLocation by remember { mutableStateOf(telAvivLocation) }
-    var radiusKm by remember { mutableStateOf(10) }
+    var radiusKm by remember { mutableStateOf(5) }
     var locationName by remember { mutableStateOf("Tel Aviv") }
     var isLoadingLocation by remember { mutableStateOf(false) }
 
@@ -157,9 +158,12 @@ fun LocationSearchFilter(
 
                 CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
                     Slider(
-                        value = radiusKm.toFloat(),
-                        onValueChange = { radiusKm = it.toInt().coerceIn(2, 40) },
-                        valueRange = 2f..40f,
+                        value = radiusValues.indexOf(radiusKm).toFloat(),
+                        onValueChange = { index ->
+                            radiusKm = radiusValues[index.toInt().coerceIn(0, radiusValues.size - 1)]
+                        },
+                        valueRange = 0f..(radiusValues.size - 1).toFloat(),
+                        steps = radiusValues.size - 2,
                         colors = SliderDefaults.colors(
                             thumbColor = Color(0xFF9C27B0),
                             activeTrackColor = Color(0xFF9C27B0),
@@ -167,10 +171,12 @@ fun LocationSearchFilter(
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(22.dp) // very slim
+                            .height(22.dp)
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(12.dp))
+
 
             // Map + floating controls (don't consume Column height)
             Box(

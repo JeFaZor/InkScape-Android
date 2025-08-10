@@ -27,6 +27,7 @@ import com.example.inkscape.firebase.ArtistProfile
 import com.example.inkscape.firebase.FirebaseManager
 import kotlinx.coroutines.launch
 import kotlin.math.*
+import androidx.compose.foundation.clickable
 
 // Search function to handle different search criteria
 private suspend fun searchArtists(
@@ -174,12 +175,7 @@ fun SearchResults(
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
-                Text(
-                    text = "Search Results",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+
 
                 // Show search criteria
                 val searchCriteria = buildList {
@@ -281,11 +277,15 @@ fun SearchResults(
 fun ArtistResultCard(
     artist: ArtistProfile,
     modifier: Modifier = Modifier
+
+
 ) {
+    var showImageDialog by remember { mutableStateOf(false) }
+    var selectedImageUrl by remember { mutableStateOf("") }
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(240.dp), // Fixed height for consistent grid
+            .height(220.dp), // Fixed height for consistent grid
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF1A1A1A)
         ),
@@ -306,13 +306,13 @@ fun ArtistResultCard(
                     model = artist.profileImageUrl.takeIf { it.isNotEmpty() },
                     contentDescription = "Profile Image",
                     modifier = Modifier
-                        .size(60.dp)
+                        .size(30.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop,
                     fallback = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_camera)
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
                 // Artist name
                 Column(
@@ -326,11 +326,11 @@ fun ArtistResultCard(
                     }
 
                     Text(
-                        text = displayName,
+                        text = artist.fullName ?: "Unknown Artist",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -341,7 +341,7 @@ fun ArtistResultCard(
             // Work images - 3 in a row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 repeat(3) { index ->
                     val imageUrl = if (index < artist.workImageUrls.size) {
@@ -353,9 +353,15 @@ fun ArtistResultCard(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .aspectRatio(1f) // Square aspect ratio
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF2A2A2A)) // Background color for empty slots
+                            .aspectRatio(0.8f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF2A2A2A))
+                            .clickable {
+                                if (imageUrl != null && imageUrl.isNotEmpty()) {
+                                    selectedImageUrl = imageUrl
+                                    showImageDialog = true
+                                }
+                            }
                     ) {
                         if (imageUrl != null && imageUrl.isNotEmpty()) {
                             AsyncImage(
@@ -395,6 +401,29 @@ fun ArtistResultCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                // Image Dialog
+                if (showImageDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showImageDialog = false },
+                        title = { Text("Work Image", color = Color.White) },
+                        text = {
+                            AsyncImage(
+                                model = selectedImageUrl,
+                                contentDescription = "Full size image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f),
+                                contentScale = ContentScale.Fit
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showImageDialog = false }) {
+                                Text("Close", color = Color(0xFF9C27B0))
+                            }
+                        },
+                        containerColor = Color(0xFF1A1A1A)
                     )
                 }
             }
