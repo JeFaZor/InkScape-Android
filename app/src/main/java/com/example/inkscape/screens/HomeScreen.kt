@@ -27,6 +27,7 @@ import coil.compose.AsyncImage
 import com.example.inkscape.R
 import com.example.inkscape.components.StyleGrid
 import com.example.inkscape.components.LocationSearchFilter
+import com.example.inkscape.components.SearchResults
 
 // Data class for user state
 data class UserState(
@@ -46,10 +47,10 @@ fun HomeScreen(
 ) {
     var searchText by remember { mutableStateOf("") }
     var showStylePicker by remember { mutableStateOf(false) }
-    var showLocationPicker by remember { mutableStateOf(false) }
     var selectedStyle by remember { mutableStateOf<String?>(null) }
+    var showLocationPicker by remember { mutableStateOf(false) }
     var selectedLocation by remember { mutableStateOf<String?>(null) }
-    var selectedRadius by remember { mutableStateOf<Int?>(null) }
+    var showSearchResults by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -96,19 +97,27 @@ fun HomeScreen(
                 // User name
                 Text(
                     text = currentUser.fullName,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
                 )
 
                 Spacer(modifier = Modifier.width(16.dp))
 
                 // Logout button
-                TextButton(
+                OutlinedButton(
                     onClick = onLogoutClick,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color(0xFF9C27B0)
-                    )
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = Color(0xFF9C27B0)
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.height(36.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
                 ) {
                     Text(
                         text = "Logout",
@@ -118,7 +127,7 @@ fun HomeScreen(
                 }
             }
         } else {
-            // Show auth buttons for non-logged users
+            // Show Sign In/Up buttons (original code)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -177,10 +186,10 @@ fun HomeScreen(
                     )
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = if (showStylePicker || showLocationPicker) Arrangement.Top else Arrangement.Center
+            verticalArrangement = if (showStylePicker || showLocationPicker || showSearchResults) Arrangement.Top else Arrangement.Center
         ) {
 
-            if (!showStylePicker && !showLocationPicker) {
+            if (!showStylePicker && !showLocationPicker && !showSearchResults) {
                 Spacer(modifier = Modifier.weight(1f))
             } else {
                 Spacer(modifier = Modifier.height(80.dp))
@@ -189,52 +198,39 @@ fun HomeScreen(
             // Logo (always visible)
             Image(
                 painter = painterResource(id = R.drawable.logo),
-                contentDescription = "InkScape Logo",
+                contentDescription = "Inkscape Logo",
                 modifier = Modifier
-                    .size(120.dp)
-                    .padding(bottom = 32.dp)
+                    .size(100.dp)
+                    .padding(bottom = 16.dp)
             )
 
-            // Title and subtitle with animation
             AnimatedVisibility(
-                visible = !showStylePicker && !showLocationPicker,
+                visible = !showStylePicker && !showLocationPicker && !showSearchResults,
                 enter = fadeIn(
-                    animationSpec = tween(300, delayMillis = 100)
-                ) + expandVertically(
-                    animationSpec = tween(400)
+                    animationSpec = tween(
+                        durationMillis = 400,
+                        delayMillis = 100
+                    )
                 ),
-                exit = fadeOut(
-                    animationSpec = tween(200)
-                ) + shrinkVertically(
-                    animationSpec = tween(300)
-                )
+                exit = fadeOut(animationSpec = tween(200))
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Main title
                     Text(
-                        text = "Find Your Perfect",
-                        fontSize = 36.sp,
+                        text = "Find Your Perfect\nTattoo Artist",
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         textAlign = TextAlign.Center,
-                        lineHeight = 42.sp
-                    )
-
-                    Text(
-                        text = "Tattoo Artist",
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF9C27B0),
-                        textAlign = TextAlign.Center,
-                        lineHeight = 42.sp,
+                        lineHeight = 36.sp,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
                     // Subtitle
                     Text(
-                        text = "Discover talented tattoo artists based on their unique styles and specialties. Search by location or explore to find the perfect match.",
+                        text = "Search by location or explore to find the perfect match.",
                         fontSize = 16.sp,
                         color = Color(0xFFD1C4E9),
                         textAlign = TextAlign.Center,
@@ -279,7 +275,13 @@ fun HomeScreen(
 
             // Search button
             Button(
-                onClick = { /* TODO: Search action */ },
+                onClick = {
+                    if (searchText.isNotEmpty() || selectedStyle != null || selectedLocation != null) {
+                        showSearchResults = true
+                        showStylePicker = false
+                        showLocationPicker = false
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -318,6 +320,7 @@ fun HomeScreen(
                     onClick = {
                         showStylePicker = !showStylePicker
                         showLocationPicker = false
+                        showSearchResults = false
                         if (!showStylePicker) {
                             selectedStyle = null
                         }
@@ -347,9 +350,9 @@ fun HomeScreen(
                     onClick = {
                         showLocationPicker = !showLocationPicker
                         showStylePicker = false
+                        showSearchResults = false
                         if (!showLocationPicker) {
                             selectedLocation = null
-                            selectedRadius = null
                         }
                     },
                     modifier = Modifier.weight(1f),
@@ -366,10 +369,7 @@ fun HomeScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = selectedLocation?.let {
-                            if (selectedRadius != null) "$it (${selectedRadius}km)"
-                            else it
-                        } ?: "Location",
+                        text = selectedLocation ?: "Location",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -423,7 +423,6 @@ fun HomeScreen(
                     LocationSearchFilter(
                         onLocationSelected = { locationName, radiusKm ->
                             selectedLocation = locationName
-                            selectedRadius = radiusKm
                             showLocationPicker = false
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -431,8 +430,35 @@ fun HomeScreen(
                 }
             }
 
+            // Search Results (when visible)
+            AnimatedVisibility(
+                visible = showSearchResults,
+                enter = fadeIn(
+                    animationSpec = tween(300, delayMillis = 200)
+                ) + expandVertically(
+                    animationSpec = tween(400)
+                ),
+                exit = fadeOut(
+                    animationSpec = tween(200)
+                ) + shrinkVertically(
+                    animationSpec = tween(300)
+                )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    SearchResults(
+                        searchQuery = searchText,
+                        selectedStyle = selectedStyle,
+                        selectedLocation = selectedLocation,
+                        selectedRadius = 10, // Default radius
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
             // Dynamic spacer for bottom
-            if (!showStylePicker && !showLocationPicker) {
+            if (!showStylePicker && !showLocationPicker && !showSearchResults) {
                 Spacer(modifier = Modifier.weight(1f))
 
                 // Bottom text
