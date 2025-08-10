@@ -285,7 +285,7 @@ fun ArtistResultCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(220.dp), // Fixed height for consistent grid
+            .height(220.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF1A1A1A)
         ),
@@ -322,7 +322,7 @@ fun ArtistResultCard(
                     val displayName = if (artist.studioName.isNotEmpty()) {
                         artist.studioName
                     } else {
-                        "Artist" // You might want to add actual name fields to ArtistProfile
+                        "Artist"
                     }
 
                     Text(

@@ -114,7 +114,6 @@ fun LocationPicker(
                 )
             }
 
-            // Current Location Button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -272,11 +271,9 @@ private fun formatAddressForDisplay(address: android.location.Address): String {
         }
     }
 
-    // Add city/locality
     address.locality?.let { if (it.isNotBlank()) components.add(it) }
         ?: address.subAdminArea?.let { if (it.isNotBlank()) components.add(it) }
 
-    // Return formatted address or fallback
     return if (components.isNotEmpty()) {
         components.joinToString(", ")
     } else {

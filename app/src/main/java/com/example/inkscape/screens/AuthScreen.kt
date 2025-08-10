@@ -134,7 +134,6 @@ fun AuthScreen(
                 }
             }
 
-            // Sign up form - removed completely since we go to ArtistSignUpScreen
 
             // Email field
             OutlinedTextField(

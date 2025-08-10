@@ -76,7 +76,7 @@ fun MainScreen() {
                     navController.popBackStack()
                 },
                 onSignUpComplete = {
-                    // After successful signup, go back to home (without auto-login)
+                    // After successful signup, go back to home
                     navController.navigate("home") {
                         popUpTo("home") { inclusive = true }
                     }
