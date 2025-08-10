@@ -52,7 +52,8 @@ fun StyleGrid(
         columns = GridCells.Fixed(2),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier.heightIn(max = 900.dp)
+        modifier = modifier
+            .fillMaxSize()
     ) {
         items(styles) { style ->
             StyleCard(
