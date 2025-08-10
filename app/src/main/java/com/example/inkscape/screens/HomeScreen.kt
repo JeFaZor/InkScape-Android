@@ -232,7 +232,7 @@ fun HomeScreen(
                 onValueChange = { searchText = it },
                 placeholder = {
                     Text(
-                        "Search artist by name or style...",
+                        "Search artist by name",
                         color = Color(0xFFBDBDBD)
                     )
                 },

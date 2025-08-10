@@ -46,53 +46,38 @@ private suspend fun searchArtists(
     try {
         var results = emptyList<ArtistProfile>()
 
-        when {
-            // Search by style (priority)
-            selectedStyle != null -> {
-                results = firebaseManager.getArtistsByStyle(selectedStyle)
+        // Start with all artists and apply filters progressively
+        results = firebaseManager.getAllArtists()
 
-                // If location is also selected, filter by location
-                if (selectedLocation != null && selectedLatitude != null && selectedLongitude != null) {
-                    results = results.filter { artist ->
-                        if (artist.latitude == 0.0 && artist.longitude == 0.0) {
-                            false
-                        } else {
-                            val distance = calculateDistance(
-                                selectedLatitude, selectedLongitude,
-                                artist.latitude, artist.longitude
-                            )
-                            distance <= selectedRadius
-                        }
-                    }
-                }
-            }
+// Apply style filter if provided
+        if (selectedStyle != null) {
+            val styleArtists = firebaseManager.getArtistsByStyle(selectedStyle)
+            results = styleArtists
+        }
 
-            // Search by location only
-            selectedLocation != null && selectedLatitude != null && selectedLongitude != null -> {
-                results = firebaseManager.getArtistsByLocation(
-                    centerLatitude = selectedLatitude,
-                    centerLongitude = selectedLongitude,
-                    radiusKm = selectedRadius.toDouble()
-                )
-            }
-
-            // Search by name/query
-            searchQuery.isNotEmpty() -> {
-                // Get all artists and filter by studio name or other fields
-                val allArtists = firebaseManager.getAllArtists()
-                results = allArtists.filter { artist ->
-                    artist.studioName.contains(searchQuery, ignoreCase = true) ||
-                            artist.address.contains(searchQuery, ignoreCase = true) ||
-                            artist.fullName.contains(searchQuery, ignoreCase = true)
-                }
-            }
-
-            // Default - get all artists
-            else -> {
-                results = firebaseManager.getAllArtists()
+// Apply name/query filter if provided
+        if (searchQuery.isNotEmpty()) {
+            results = results.filter { artist ->
+                artist.studioName.contains(searchQuery, ignoreCase = true) ||
+                        artist.address.contains(searchQuery, ignoreCase = true) ||
+                        artist.fullName.contains(searchQuery, ignoreCase = true)
             }
         }
 
+// Apply location filter if provided
+        if (selectedLocation != null && selectedLatitude != null && selectedLongitude != null) {
+            results = results.filter { artist ->
+                if (artist.latitude == 0.0 && artist.longitude == 0.0) {
+                    false
+                } else {
+                    val distance = calculateDistance(
+                        selectedLatitude, selectedLongitude,
+                        artist.latitude, artist.longitude
+                    )
+                    distance <= selectedRadius
+                }
+            }
+        }
         onResults(results)
     } catch (e: Exception) {
         onResults(emptyList())
