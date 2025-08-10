@@ -26,6 +26,7 @@ import androidx.compose.animation.core.*
 import coil.compose.AsyncImage
 import com.example.inkscape.R
 import com.example.inkscape.components.StyleGrid
+import com.example.inkscape.components.LocationSearchFilter
 
 // Data class for user state
 data class UserState(
@@ -45,7 +46,10 @@ fun HomeScreen(
 ) {
     var searchText by remember { mutableStateOf("") }
     var showStylePicker by remember { mutableStateOf(false) }
+    var showLocationPicker by remember { mutableStateOf(false) }
     var selectedStyle by remember { mutableStateOf<String?>(null) }
+    var selectedLocation by remember { mutableStateOf<String?>(null) }
+    var selectedRadius by remember { mutableStateOf<Int?>(null) }
 
     Box(
         modifier = Modifier
@@ -92,27 +96,19 @@ fun HomeScreen(
                 // User name
                 Text(
                     text = currentUser.fullName,
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White
                 )
 
                 Spacer(modifier = Modifier.width(16.dp))
 
                 // Logout button
-                OutlinedButton(
+                TextButton(
                     onClick = onLogoutClick,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White
-                    ),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = Color(0xFF9C27B0)
-                    ),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.height(36.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFF9C27B0)
+                    )
                 ) {
                     Text(
                         text = "Logout",
@@ -122,7 +118,7 @@ fun HomeScreen(
                 }
             }
         } else {
-            // Show Sign In/Up buttons (original code)
+            // Show auth buttons for non-logged users
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -181,10 +177,10 @@ fun HomeScreen(
                     )
                 ),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = if (showStylePicker) Arrangement.Top else Arrangement.Center
+            verticalArrangement = if (showStylePicker || showLocationPicker) Arrangement.Top else Arrangement.Center
         ) {
 
-            if (!showStylePicker) {
+            if (!showStylePicker && !showLocationPicker) {
                 Spacer(modifier = Modifier.weight(1f))
             } else {
                 Spacer(modifier = Modifier.height(80.dp))
@@ -201,7 +197,7 @@ fun HomeScreen(
 
             // Title and subtitle with animation
             AnimatedVisibility(
-                visible = !showStylePicker,
+                visible = !showStylePicker && !showLocationPicker,
                 enter = fadeIn(
                     animationSpec = tween(300, delayMillis = 100)
                 ) + expandVertically(
@@ -321,6 +317,7 @@ fun HomeScreen(
                 OutlinedButton(
                     onClick = {
                         showStylePicker = !showStylePicker
+                        showLocationPicker = false
                         if (!showStylePicker) {
                             selectedStyle = null
                         }
@@ -347,20 +344,32 @@ fun HomeScreen(
 
                 // Location button
                 OutlinedButton(
-                    onClick = { /* TODO: Location picker */ },
+                    onClick = {
+                        showLocationPicker = !showLocationPicker
+                        showStylePicker = false
+                        if (!showLocationPicker) {
+                            selectedLocation = null
+                            selectedRadius = null
+                        }
+                    },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
+                        containerColor = if (selectedLocation != null || showLocationPicker)
+                            Color(0x30FFFFFF) else Color.Transparent,
                         contentColor = Color.White
                     ),
                     border = BorderStroke(
                         width = 1.dp,
-                        color = Color(0xFF424242)
+                        color = if (selectedLocation != null || showLocationPicker)
+                            Color(0xFF9C27B0) else Color(0xFF424242)
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = "Location",
+                        text = selectedLocation?.let {
+                            if (selectedRadius != null) "$it (${selectedRadius}km)"
+                            else it
+                        } ?: "Location",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -394,8 +403,36 @@ fun HomeScreen(
                 }
             }
 
+            // Location picker (when expanded)
+            AnimatedVisibility(
+                visible = showLocationPicker,
+                enter = fadeIn(
+                    animationSpec = tween(300, delayMillis = 200)
+                ) + expandVertically(
+                    animationSpec = tween(400)
+                ),
+                exit = fadeOut(
+                    animationSpec = tween(200)
+                ) + shrinkVertically(
+                    animationSpec = tween(300)
+                )
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    LocationSearchFilter(
+                        onLocationSelected = { locationName, radiusKm ->
+                            selectedLocation = locationName
+                            selectedRadius = radiusKm
+                            showLocationPicker = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
             // Dynamic spacer for bottom
-            if (!showStylePicker) {
+            if (!showStylePicker && !showLocationPicker) {
                 Spacer(modifier = Modifier.weight(1f))
 
                 // Bottom text

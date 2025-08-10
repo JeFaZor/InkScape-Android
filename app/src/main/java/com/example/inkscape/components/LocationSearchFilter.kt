@@ -1,14 +1,15 @@
 package com.example.inkscape.components
 
 import android.Manifest
+import android.location.Geocoder
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 data class LocationSearchData(
     val centerLatitude: Double,
@@ -40,7 +42,7 @@ fun LocationSearchFilter(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Tel Aviv as default location
+    // Default: Tel Aviv
     val telAvivLocation = LatLng(32.0853, 34.7818)
 
     var selectedLocation by remember { mutableStateOf(telAvivLocation) }
@@ -55,14 +57,14 @@ fun LocationSearchFilter(
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
         onResult = { permissions ->
-            val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
-            val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
-
-            if (fineLocationGranted || coarseLocationGranted) {
+            val fine = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+            val coarse = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+            if (fine || coarse) {
                 getCurrentLocation(context, scope) { location ->
                     selectedLocation = location
-                    locationName = "Current Location"
-
+                    getAddressFromLocation(context, scope, location) { address ->
+                        locationName = address
+                    }
                     scope.launch {
                         cameraPositionState.animate(
                             update = com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(location, 12f),
@@ -78,79 +80,40 @@ fun LocationSearchFilter(
     )
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(450.dp), // Slightly bigger for radius slider
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1A1A1A)
-        ),
+        modifier = modifier.fillMaxWidth(), // height controlled by parent screen
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Header
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            // Header — compact
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Location",
-                        tint = Color(0xFF9C27B0),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Search Area",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                }
-
-                // Current Location button
-                IconButton(
-                    onClick = {
-                        isLoadingLocation = true
-                        locationPermissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            )
-                        )
-                    },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    if (isLoadingLocation) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Color(0xFF9C27B0),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.MyLocation,
-                            contentDescription = "Current Location",
-                            tint = Color(0xFF9C27B0),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = "Location",
+                    tint = Color(0xFF9C27B0),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Search Area",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
             }
 
-            // Radius slider
+            // Radius slider — above the map, slim
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 16.dp)
+                    .padding(horizontal = 10.dp)
+                    .padding(bottom = 6.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -158,143 +121,140 @@ fun LocationSearchFilter(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Search Radius:",
-                        fontSize = 14.sp,
+                        text = "Search Radius",
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFFD1C4E9)
                     )
-                    Text(
-                        text = "$radiusKm km",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF9C27B0)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Slider(
-                    value = radiusKm.toFloat(),
-                    onValueChange = { radiusKm = it.toInt() },
-                    valueRange = 5f..50f,
-                    steps = 8, // 5, 10, 15, 20, 25, 30, 35, 40, 45, 50
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF9C27B0),
-                        activeTrackColor = Color(0xFF9C27B0),
-                        inactiveTrackColor = Color(0xFF424242)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Radius indicators
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "5km",
-                        fontSize = 12.sp,
-                        color = Color(0xFF9E9E9E)
-                    )
-                    Text(
-                        text = "25km",
-                        fontSize = 12.sp,
-                        color = Color(0xFF9E9E9E)
-                    )
-                    Text(
-                        text = "50km",
-                        fontSize = 12.sp,
-                        color = Color(0xFF9E9E9E)
-                    )
-                }
-            }
-
-            // Map with radius circle
-            GoogleMap(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                cameraPositionState = cameraPositionState,
-                onMapClick = { latLng ->
-                    selectedLocation = latLng
-                    locationName = "${String.format("%.4f", latLng.latitude)}, ${String.format("%.4f", latLng.longitude)}"
-                }
-            ) {
-                // Center marker
-                Marker(
-                    state = MarkerState(position = selectedLocation),
-                    title = "Search Center"
-                )
-
-                // Radius circle
-                Circle(
-                    center = selectedLocation,
-                    radius = radiusKm * 1000.0, // Convert km to meters
-                    fillColor = Color(0x309C27B0), // Semi-transparent purple
-                    strokeColor = Color(0xFF9C27B0),
-                    strokeWidth = 2f
-                )
-            }
-
-            // Selected location info and confirm button
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF2A2A2A)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Search Center:",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFF9C27B0)
-                            )
-                            Text(
-                                text = locationName,
-                                fontSize = 14.sp,
-                                color = Color.White,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                            Text(
-                                text = "Within $radiusKm km radius",
-                                fontSize = 12.sp,
-                                color = Color(0xFFD1C4E9),
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // – 2 km
+                        CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+                            TextButton(
+                                onClick = { radiusKm = (radiusKm - 2).coerceIn(2, 40) },
+                                modifier = Modifier.height(28.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) { Text("–", fontSize = 14.sp, color = Color.White) }
                         }
-
-                        Button(
-                            onClick = {
-                                onLocationSelected(locationName, radiusKm)
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF9C27B0)
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(36.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp)
-                        ) {
-                            Text(
-                                text = "Apply",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                        Text(
+                            text = "$radiusKm km",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF9C27B0),
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                        // + 2 km
+                        CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+                            TextButton(
+                                onClick = { radiusKm = (radiusKm + 2).coerceIn(2, 40) },
+                                modifier = Modifier.height(28.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) { Text("+", fontSize = 14.sp, color = Color.White) }
                         }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+                    Slider(
+                        value = radiusKm.toFloat(),
+                        onValueChange = { radiusKm = it.toInt().coerceIn(2, 40) },
+                        valueRange = 2f..40f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color(0xFF9C27B0),
+                            activeTrackColor = Color(0xFF9C27B0),
+                            inactiveTrackColor = Color(0xFF424242)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(22.dp) // very slim
+                    )
+                }
+            }
+
+            // Map + floating controls (don't consume Column height)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)               // map takes all flexible height
+                    .heightIn(min = 260.dp)
+            ) {
+                GoogleMap(
+                    modifier = Modifier.matchParentSize(),
+                    cameraPositionState = cameraPositionState,
+                    onMapClick = { latLng ->
+                        selectedLocation = latLng
+                        getAddressFromLocation(context, scope, latLng) { address ->
+                            locationName = address
+                        }
+                    }
+                ) {
+                    Marker(
+                        state = MarkerState(position = selectedLocation),
+                        title = "Search Center",
+                        snippet = locationName
+                    )
+                    Circle(
+                        center = selectedLocation,
+                        radius = radiusKm * 1000.0,     // km -> meters
+                        fillColor = Color(0x249C27B0), // translucent fill
+                        strokeColor = Color(0xFF9C27B0),
+                        strokeWidth = 1.5f
+                    )
+                }
+
+                // Current Location — floating top-right
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(10.dp),
+                    color = Color(0xCC2A2A2A),
+                    shape = CircleShape,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 2.dp
+                ) {
+                    CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+                        IconButton(
+                            onClick = {
+                                isLoadingLocation = true
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            if (isLoadingLocation) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Color(0xFF9C27B0),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.MyLocation,
+                                    contentDescription = "Current Location",
+                                    tint = Color(0xFF9C27B0)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Apply — floating bottom-center
+                ElevatedButton(
+                    onClick = { onLocationSelected(locationName, radiusKm) },
+                    colors = ButtonDefaults.elevatedButtonColors(containerColor = Color(0xFF9C27B0)),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(12.dp)
+                        .height(36.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp)
+                ) {
+                    Text("Apply", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -307,15 +267,56 @@ private fun getCurrentLocation(
     onLocationReceived: (LatLng) -> Unit
 ) {
     val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-
     try {
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
-                val latLng = LatLng(location.latitude, location.longitude)
-                onLocationReceived(latLng)
+                onLocationReceived(LatLng(location.latitude, location.longitude))
             }
         }
-    } catch (e: SecurityException) {
-        // Handle permission error
+    } catch (_: SecurityException) {
+        // permissions not granted
+    }
+}
+
+private fun getAddressFromLocation(
+    context: android.content.Context,
+    scope: kotlinx.coroutines.CoroutineScope,
+    latLng: LatLng,
+    onAddressReceived: (String) -> Unit
+) {
+    scope.launch {
+        try {
+            val geocoder = Geocoder(context, Locale.getDefault())
+            val addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
+
+            val address = if (!addresses.isNullOrEmpty()) {
+                val addr = addresses[0]
+                buildString {
+                    // City / locality
+                    addr.locality?.let {
+                        if (it.isNotBlank()) append(it)
+                    } ?: addr.subAdminArea?.let {
+                        if (it.isNotBlank()) append(it)
+                    }
+                    // District if different
+                    addr.subAdminArea?.let { district ->
+                        if (district.isNotBlank() && district != (addr.locality ?: "")) {
+                            if (isNotEmpty()) append(", ")
+                            append(district)
+                        }
+                    }
+                    // Fallback to coords
+                    if (isEmpty()) {
+                        append("${String.format("%.4f", latLng.latitude)}, ${String.format("%.4f", latLng.longitude)}")
+                    }
+                }
+            } else {
+                "${String.format("%.4f", latLng.latitude)}, ${String.format("%.4f", latLng.longitude)}"
+            }
+
+            onAddressReceived(address)
+        } catch (_: Exception) {
+            onAddressReceived("${String.format("%.4f", latLng.latitude)}, ${String.format("%.4f", latLng.longitude)}")
+        }
     }
 }
