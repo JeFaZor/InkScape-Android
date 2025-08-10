@@ -51,6 +51,9 @@ fun HomeScreen(
     var showLocationPicker by remember { mutableStateOf(false) }
     var selectedLocation by remember { mutableStateOf<String?>(null) }
     var showSearchResults by remember { mutableStateOf(false) }
+    var selectedLatitude by remember { mutableStateOf<Double?>(null) }
+    var selectedLongitude by remember { mutableStateOf<Double?>(null) }
+    var selectedRadius by remember { mutableStateOf(10) }
 
     Box(
         modifier = Modifier
@@ -421,8 +424,11 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     LocationSearchFilter(
-                        onLocationSelected = { locationName, radiusKm ->
+                        onLocationSelected = { locationName, radiusKm, latitude, longitude ->
                             selectedLocation = locationName
+                            selectedRadius = radiusKm
+                            selectedLatitude = latitude
+                            selectedLongitude = longitude
                             showLocationPicker = false
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -451,7 +457,9 @@ fun HomeScreen(
                         searchQuery = searchText,
                         selectedStyle = selectedStyle,
                         selectedLocation = selectedLocation,
-                        selectedRadius = 10, // Default radius
+                        selectedRadius = selectedRadius,
+                        selectedLatitude = selectedLatitude,
+                        selectedLongitude = selectedLongitude,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

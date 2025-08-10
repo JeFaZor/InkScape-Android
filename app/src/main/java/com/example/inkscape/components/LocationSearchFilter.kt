@@ -36,7 +36,7 @@ data class LocationSearchData(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationSearchFilter(
-    onLocationSelected: (String, Int) -> Unit, // locationName, radiusKm
+    onLocationSelected: (String, Int, Double, Double) -> Unit, // locationName, radiusKm, latitude, longitude
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -245,7 +245,7 @@ fun LocationSearchFilter(
 
                 // Apply — floating bottom-center
                 ElevatedButton(
-                    onClick = { onLocationSelected(locationName, radiusKm) },
+                    onClick = { onLocationSelected(locationName, radiusKm, selectedLocation.latitude, selectedLocation.longitude) },
                     colors = ButtonDefaults.elevatedButtonColors(containerColor = Color(0xFF9C27B0)),
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier

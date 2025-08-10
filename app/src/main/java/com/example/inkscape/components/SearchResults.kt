@@ -1,6 +1,7 @@
 package com.example.inkscape.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,12 +28,105 @@ import com.example.inkscape.firebase.FirebaseManager
 import kotlinx.coroutines.launch
 import kotlin.math.*
 
+// Search function to handle different search criteria
+private suspend fun searchArtists(
+    firebaseManager: FirebaseManager,
+    searchQuery: String,
+    selectedStyle: String?,
+    selectedLocation: String?,
+    selectedRadius: Int,
+    selectedLatitude: Double? = null,
+    selectedLongitude: Double? = null,
+    onLoading: (Boolean) -> Unit,
+    onResults: (List<ArtistProfile>) -> Unit
+) {
+    onLoading(true)
+
+    try {
+        var results = emptyList<ArtistProfile>()
+
+        when {
+            // Search by style (priority)
+            selectedStyle != null -> {
+                results = firebaseManager.getArtistsByStyle(selectedStyle)
+
+                // If location is also selected, filter by location
+                if (selectedLocation != null && selectedLatitude != null && selectedLongitude != null) {
+                    results = results.filter { artist ->
+                        if (artist.latitude == 0.0 && artist.longitude == 0.0) {
+                            false
+                        } else {
+                            val distance = calculateDistance(
+                                selectedLatitude, selectedLongitude,
+                                artist.latitude, artist.longitude
+                            )
+                            distance <= selectedRadius
+                        }
+                    }
+                }
+            }
+
+            // Search by location only
+            selectedLocation != null && selectedLatitude != null && selectedLongitude != null -> {
+                results = firebaseManager.getArtistsByLocation(
+                    centerLatitude = selectedLatitude,
+                    centerLongitude = selectedLongitude,
+                    radiusKm = selectedRadius.toDouble()
+                )
+            }
+
+            // Search by name/query
+            searchQuery.isNotEmpty() -> {
+                // Get all artists and filter by studio name or other fields
+                val allArtists = firebaseManager.getAllArtists()
+                results = allArtists.filter { artist ->
+                    artist.studioName.contains(searchQuery, ignoreCase = true) ||
+                            artist.address.contains(searchQuery, ignoreCase = true) ||
+                            artist.fullName.contains(searchQuery, ignoreCase = true)
+                }
+            }
+
+            // Default - get all artists
+            else -> {
+                results = firebaseManager.getAllArtists()
+            }
+        }
+
+        onResults(results)
+    } catch (e: Exception) {
+        onResults(emptyList())
+    } finally {
+        onLoading(false)
+    }
+}
+
+// Helper function to calculate distance between two points
+private fun calculateDistance(
+    lat1: Double, lon1: Double,
+    lat2: Double, lon2: Double
+): Double {
+    val earthRadius = 6371.0 // Earth's radius in kilometers
+
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+
+    val a = sin(dLat / 2) * sin(dLat / 2) +
+            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+            sin(dLon / 2) * sin(dLon / 2)
+
+    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    return earthRadius * c
+}
+
 @Composable
 fun SearchResults(
     searchQuery: String,
     selectedStyle: String?,
     selectedLocation: String?,
     selectedRadius: Int,
+    selectedLatitude: Double? = null,
+    selectedLongitude: Double? = null,
     modifier: Modifier = Modifier
 ) {
     var artists by remember { mutableStateOf<List<ArtistProfile>>(emptyList()) }
@@ -43,7 +137,7 @@ fun SearchResults(
     val scope = rememberCoroutineScope()
 
     // Trigger search when parameters change
-    LaunchedEffect(searchQuery, selectedStyle, selectedLocation, selectedRadius) {
+    LaunchedEffect(searchQuery, selectedStyle, selectedLocation, selectedRadius, selectedLatitude, selectedLongitude) {
         if (searchQuery.isNotEmpty() || selectedStyle != null || selectedLocation != null) {
             scope.launch {
                 searchArtists(
@@ -52,6 +146,8 @@ fun SearchResults(
                     selectedStyle = selectedStyle,
                     selectedLocation = selectedLocation,
                     selectedRadius = selectedRadius,
+                    selectedLatitude = selectedLatitude,
+                    selectedLongitude = selectedLongitude,
                     onLoading = { isLoading = it },
                     onResults = { results ->
                         artists = results
@@ -142,24 +238,22 @@ fun SearchResults(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(40.dp),
+                            .height(200.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "לא נמצאו תוצאות",
+                                text = "No artists found",
                                 fontSize = 18.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.White,
-                                textAlign = TextAlign.Center
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
                             )
                             Text(
                                 text = "Try adjusting your search criteria",
                                 fontSize = 14.sp,
-                                color = Color(0xFF9E9E9E),
-                                textAlign = TextAlign.Center,
+                                color = Color(0xFFD1C4E9),
                                 modifier = Modifier.padding(top = 8.dp)
                             )
                         }
@@ -168,12 +262,11 @@ fun SearchResults(
             }
 
             artists.isNotEmpty() -> {
-                // Results grid - 2 columns
+                // Results grid
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(artists) { artist ->
                         ArtistResultCard(artist = artist)
@@ -251,124 +344,60 @@ fun ArtistResultCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 repeat(3) { index ->
-                    val imageUrl = artist.workImageUrls.getOrNull(index)
+                    val imageUrl = if (index < artist.workImageUrls.size) {
+                        artist.workImageUrls[index]
+                    } else {
+                        null
+                    }
 
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = "Work ${index + 1}",
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop,
-                        fallback = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_gallery)
-                    )
+                            .aspectRatio(1f) // Square aspect ratio
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF2A2A2A)) // Background color for empty slots
+                    ) {
+                        if (imageUrl != null && imageUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = "Work Image ${index + 1}",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Styles (bottom section)
-            if (artist.styles.isNotEmpty()) {
-                Text(
-                    text = "Specializes in:",
-                    fontSize = 12.sp,
-                    color = Color(0xFF9C27B0),
-                    fontWeight = FontWeight.Medium
-                )
+            // Styles and location
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Show styles
+                if (artist.styles.isNotEmpty()) {
+                    Text(
+                        text = artist.styles.take(2).joinToString(" • "),
+                        fontSize = 12.sp,
+                        color = Color(0xFF9C27B0),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Show first 2-3 styles with overflow handling
-                val displayStyles = artist.styles.take(3)
-                val hasMoreStyles = artist.styles.size > 3
-
-                Text(
-                    text = if (hasMoreStyles) {
-                        "${displayStyles.joinToString(", ")} +${artist.styles.size - 3} more"
-                    } else {
-                        displayStyles.joinToString(", ")
-                    },
-                    fontSize = 11.sp,
-                    color = Color(0xFFD1C4E9),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 14.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.weight(1f)) // Push content up
-        }
-    }
-}
-
-private suspend fun searchArtists(
-    firebaseManager: FirebaseManager,
-    searchQuery: String,
-    selectedStyle: String?,
-    selectedLocation: String?,
-    selectedRadius: Int,
-    onLoading: (Boolean) -> Unit,
-    onResults: (List<ArtistProfile>) -> Unit
-) {
-    onLoading(true)
-
-    try {
-        var results = emptyList<ArtistProfile>()
-
-        when {
-            // Search by style
-            selectedStyle != null -> {
-                results = firebaseManager.getArtistsByStyle(selectedStyle)
-            }
-
-            // Search by location (you'll need to implement location-based search)
-            selectedLocation != null && selectedLocation != "Current Location" -> {
-                // For now, get all artists and filter by distance
-                // You might want to implement a more efficient location-based query
-                results = firebaseManager.getAllArtists()
-                // TODO: Filter by location and radius
-            }
-
-            // Search by name/query
-            searchQuery.isNotEmpty() -> {
-                // Get all artists and filter by studio name or other fields
-                val allArtists = firebaseManager.getAllArtists()
-                results = allArtists.filter { artist ->
-                    artist.studioName.contains(searchQuery, ignoreCase = true) ||
-                            artist.address.contains(searchQuery, ignoreCase = true)
+                // Show location if available
+                if (artist.address.isNotEmpty()) {
+                    Text(
+                        text = artist.address,
+                        fontSize = 11.sp,
+                        color = Color(0xFF9E9E9E),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
-
-            // Default - get all artists
-            else -> {
-                results = firebaseManager.getAllArtists()
-            }
         }
-
-        onResults(results)
-    } catch (e: Exception) {
-        onResults(emptyList())
-    } finally {
-        onLoading(false)
     }
-}
-
-// Helper function to calculate distance between two points
-private fun calculateDistance(
-    lat1: Double, lon1: Double,
-    lat2: Double, lon2: Double
-): Double {
-    val earthRadius = 6371.0 // Earth's radius in kilometers
-
-    val dLat = Math.toRadians(lat2 - lat1)
-    val dLon = Math.toRadians(lon2 - lon1)
-
-    val a = sin(dLat / 2) * sin(dLat / 2) +
-            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-            sin(dLon / 2) * sin(dLon / 2)
-
-    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-    return earthRadius * c
 }
