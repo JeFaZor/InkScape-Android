@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,10 +40,9 @@ fun LocationPicker(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val defaultLocation = LatLng(32.0853, 34.7818)
+    val defaultLocation = LatLng(32.0853, 34.7818) // Tel Aviv center
     var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
-    var showLocationName by remember { mutableStateOf("") }
-    var searchText by remember { mutableStateOf("") }
+    var displayLocationName by remember { mutableStateOf("") }
     var isLoadingLocation by remember { mutableStateOf(false) }
 
     val cameraPositionState = rememberCameraPositionState {
@@ -59,22 +57,20 @@ fun LocationPicker(
 
             if (fineLocationGranted || coarseLocationGranted) {
                 getCurrentLocation(context, scope) { location ->
-                    selectedLocation = location
-                    showLocationName = "Current Location: ${String.format("%.4f", location.latitude)}, ${String.format("%.4f", location.longitude)}"
-
-                    scope.launch {
-                        cameraPositionState.animate(
-                            update = com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(location, 15f),
-                            durationMs = 1000
-                        )
-                    }
-
-                    onLocationSelected(
-                        SelectedLocation(
-                            latitude = location.latitude,
-                            longitude = location.longitude,
-                            address = showLocationName
-                        )
+                    handleLocationSelection(location, context, scope,
+                        onLocationUpdate = { lat, lng, address ->
+                            selectedLocation = LatLng(lat, lng)
+                            displayLocationName = address
+                            onLocationSelected(SelectedLocation(lat, lng, address))
+                        },
+                        onCameraUpdate = { latLng ->
+                            scope.launch {
+                                cameraPositionState.animate(
+                                    update = com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(latLng, 15f),
+                                    durationMs = 1000
+                                )
+                            }
+                        }
                     )
                     isLoadingLocation = false
                 }
@@ -83,43 +79,6 @@ fun LocationPicker(
             }
         }
     )
-
-    fun searchAddress(address: String) {
-        if (address.isBlank()) return
-
-        scope.launch {
-            isLoadingLocation = true
-            try {
-                val geocoder = Geocoder(context, Locale.getDefault())
-                val addresses = geocoder.getFromLocationName("$address, Israel", 1)
-
-                if (!addresses.isNullOrEmpty()) {
-                    val foundLocation = addresses[0]
-                    val latLng = LatLng(foundLocation.latitude, foundLocation.longitude)
-
-                    selectedLocation = latLng
-                    showLocationName = foundLocation.getAddressLine(0) ?: address
-
-                    cameraPositionState.animate(
-                        update = com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(latLng, 15f),
-                        durationMs = 1000
-                    )
-
-                    onLocationSelected(
-                        SelectedLocation(
-                            latitude = latLng.latitude,
-                            longitude = latLng.longitude,
-                            address = showLocationName
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                // Handle error
-            } finally {
-                isLoadingLocation = false
-            }
-        }
-    }
 
     Card(
         modifier = modifier
@@ -133,6 +92,7 @@ fun LocationPicker(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
+            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -154,58 +114,15 @@ fun LocationPicker(
                 )
             }
 
+            // Current Location Button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.Center
             ) {
-                OutlinedTextField(
-                    value = searchText,
-                    onValueChange = { searchText = it },
-                    label = { Text("Search location...", color = Color.Gray) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = Color(0xFF9C27B0)
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchText.isNotEmpty()) {
-                            IconButton(
-                                onClick = { searchAddress(searchText) }
-                            ) {
-                                if (isLoadingLocation) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        color = Color(0xFF9C27B0)
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Search,
-                                        contentDescription = "Search",
-                                        tint = Color(0xFF9C27B0)
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF9C27B0),
-                        unfocusedBorderColor = Color(0xFF424242),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = Color(0xFF9C27B0),
-                        focusedContainerColor = Color(0x20FFFFFF),
-                        unfocusedContainerColor = Color(0x20FFFFFF)
-                    ),
-                    singleLine = true
-                )
-
-                IconButton(
+                Button(
                     onClick = {
                         isLoadingLocation = true
                         locationPermissionLauncher.launch(
@@ -215,41 +132,45 @@ fun LocationPicker(
                             )
                         )
                     },
-                    modifier = Modifier
-                        .size(56.dp)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF9C27B0)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isLoadingLocation
                 ) {
                     if (isLoadingLocation) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color(0xFF9C27B0)
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Getting location...")
                     } else {
                         Icon(
                             imageVector = Icons.Default.MyLocation,
                             contentDescription = "Current Location",
-                            tint = Color(0xFF9C27B0),
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Use Current Location")
                     }
                 }
             }
 
+            // Map
             GoogleMap(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 cameraPositionState = cameraPositionState,
                 onMapClick = { latLng ->
-                    selectedLocation = latLng
-                    showLocationName = "Lat: ${String.format("%.4f", latLng.latitude)}, " +
-                            "Lng: ${String.format("%.4f", latLng.longitude)}"
-
-                    onLocationSelected(
-                        SelectedLocation(
-                            latitude = latLng.latitude,
-                            longitude = latLng.longitude,
-                            address = showLocationName
-                        )
+                    handleLocationSelection(latLng, context, scope,
+                        onLocationUpdate = { lat, lng, address ->
+                            selectedLocation = LatLng(lat, lng)
+                            displayLocationName = address
+                            onLocationSelected(SelectedLocation(lat, lng, address))
+                        },
+                        onCameraUpdate = { }
                     )
                 }
             ) {
@@ -261,7 +182,8 @@ fun LocationPicker(
                 }
             }
 
-            if (selectedLocation != null) {
+            // Selected Location Display
+            if (selectedLocation != null && displayLocationName.isNotEmpty()) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -281,7 +203,7 @@ fun LocationPicker(
                             color = Color(0xFF9C27B0)
                         )
                         Text(
-                            text = showLocationName,
+                            text = displayLocationName,
                             fontSize = 12.sp,
                             color = Color.White,
                             modifier = Modifier.padding(top = 4.dp)
@@ -299,7 +221,7 @@ fun LocationPicker(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = "Tap on the map to select your studio location",
+                        text = "Use current location or tap on the map to select your studio location",
                         fontSize = 14.sp,
                         color = Color(0xFFBDBDBD),
                         modifier = Modifier.padding(12.dp)
@@ -307,6 +229,58 @@ fun LocationPicker(
                 }
             }
         }
+    }
+}
+
+private fun handleLocationSelection(
+    latLng: LatLng,
+    context: android.content.Context,
+    scope: kotlinx.coroutines.CoroutineScope,
+    onLocationUpdate: (Double, Double, String) -> Unit,
+    onCameraUpdate: (LatLng) -> Unit
+) {
+    scope.launch {
+        try {
+            val geocoder = Geocoder(context, Locale.getDefault())
+            val addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
+
+            val formattedAddress = if (!addresses.isNullOrEmpty()) {
+                formatAddressForDisplay(addresses[0])
+            } else {
+                "Selected location"
+            }
+
+            onLocationUpdate(latLng.latitude, latLng.longitude, formattedAddress)
+            onCameraUpdate(latLng)
+        } catch (e: Exception) {
+            onLocationUpdate(latLng.latitude, latLng.longitude, "Selected location")
+        }
+    }
+}
+
+private fun formatAddressForDisplay(address: android.location.Address): String {
+    val components = mutableListOf<String>()
+
+    // Add street address if available
+    address.getAddressLine(0)?.let { addressLine ->
+        val parts = addressLine.split(",")
+        if (parts.isNotEmpty()) {
+            val streetPart = parts[0].trim()
+            if (streetPart.isNotBlank()) {
+                components.add(streetPart)
+            }
+        }
+    }
+
+    // Add city/locality
+    address.locality?.let { if (it.isNotBlank()) components.add(it) }
+        ?: address.subAdminArea?.let { if (it.isNotBlank()) components.add(it) }
+
+    // Return formatted address or fallback
+    return if (components.isNotEmpty()) {
+        components.joinToString(", ")
+    } else {
+        "Selected location"
     }
 }
 

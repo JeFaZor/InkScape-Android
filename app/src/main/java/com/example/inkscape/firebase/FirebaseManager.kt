@@ -10,6 +10,7 @@ import kotlin.math.*
 
 data class ArtistProfile(
     val id: String = "",
+    val fullName: String = "",
     val profileImageUrl: String = "",
     val workImageUrls: List<String> = emptyList(),
     val styles: List<String> = emptyList(),
@@ -44,6 +45,8 @@ class FirebaseManager {
     suspend fun createArtistProfile(
         email: String,
         password: String,
+        firstName: String,
+        lastName: String,
         profileImageUri: Uri?,
         workImageUris: List<Uri?>,
         selectedStyles: List<String>,
@@ -60,6 +63,9 @@ class FirebaseManager {
 
             val artistId = user.uid
 
+            // Create full name from first and last name
+            val fullName = "$firstName $lastName".trim()
+
             val profileImageUrl = if (profileImageUri != null) {
                 uploadImage(profileImageUri, "artists/$artistId/profile.jpg")
             } else ""
@@ -74,6 +80,7 @@ class FirebaseManager {
 
             val artistProfile = ArtistProfile(
                 id = artistId,
+                fullName = fullName,
                 profileImageUrl = profileImageUrl,
                 workImageUrls = workImageUrls,
                 styles = selectedStyles,
@@ -98,6 +105,16 @@ class FirebaseManager {
             authResult.user?.uid ?: throw Exception("Login failed")
         } catch (e: Exception) {
             throw Exception("Login failed: ${e.message}")
+        }
+    }
+
+    // NEW: Get artist profile by user ID
+    suspend fun getArtistProfile(userId: String): ArtistProfile? {
+        return try {
+            val snapshot = artistsCollection.document(userId).get().await()
+            snapshot.toObject(ArtistProfile::class.java)
+        } catch (e: Exception) {
+            null
         }
     }
 

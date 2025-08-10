@@ -20,25 +20,62 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.inkscape.firebase.FirebaseManager
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
     onBackClick: () -> Unit = {},
-    onAuthSuccess: () -> Unit = {}
+    onAuthSuccess: (String, String, String) -> Unit = { _, _, _ -> } // userId, fullName, profileImageUrl
 ) {
-    var isSignUp by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var fullName by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
+    val firebaseManager = remember { FirebaseManager() }
+    val scope = rememberCoroutineScope()
+
+    fun handleSignIn() {
+        if (email.isBlank() || password.isBlank()) {
+            errorMessage = "Please fill in all fields"
+            return
+        }
+
+        scope.launch {
+            try {
+                isLoading = true
+                errorMessage = ""
+
+                // Sign in
+                val userId = firebaseManager.signIn(email, password)
+                val artistProfile = firebaseManager.getArtistProfile(userId)
+
+                if (artistProfile != null) {
+                    onAuthSuccess(
+                        userId,
+                        formatName(artistProfile.fullName),
+                        artistProfile.profileImageUrl
+                    )
+                } else {
+                    errorMessage = "Artist profile not found"
+                }
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "Authentication failed"
+            } finally {
+                isLoading = false
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Back button - הוסף כפתור חזרה
+        // Back button
         IconButton(
             onClick = onBackClick,
             modifier = Modifier
@@ -62,7 +99,7 @@ fun AuthScreen(
 
             // Title
             Text(
-                text = if (isSignUp) "Create Account" else "Welcome Back",
+                text = "Welcome Back",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -71,44 +108,33 @@ fun AuthScreen(
             )
 
             Text(
-                text = if (isSignUp) "Join the tattoo community" else "Sign in to your account",
+                text = "Sign in to your account",
                 fontSize = 16.sp,
                 color = Color(0xFFD1C4E9),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 40.dp)
             )
 
-            // Sign up form
-            if (isSignUp) {
-                OutlinedTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    label = { Text("Full Name") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Name",
-                            tint = Color(0xFF9C27B0)
-                        )
-                    },
+            // Error message
+            if (errorMessage.isNotEmpty()) {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF9C27B0),
-                        unfocusedBorderColor = Color(0xFF424242),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = Color(0xFF9C27B0),
-                        unfocusedLabelColor = Color(0xFFBDBDBD),
-                        cursorColor = Color(0xFF9C27B0),
-                        focusedContainerColor = Color(0x20FFFFFF),
-                        unfocusedContainerColor = Color(0x20FFFFFF)
-                    ),
-                    singleLine = true
-                )
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFF5252)
+                    )
+                ) {
+                    Text(
+                        text = errorMessage,
+                        modifier = Modifier.padding(16.dp),
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
+
+            // Sign up form - removed completely since we go to ArtistSignUpScreen
 
             // Email field
             OutlinedTextField(
@@ -137,7 +163,8 @@ fun AuthScreen(
                     focusedContainerColor = Color(0x20FFFFFF),
                     unfocusedContainerColor = Color(0x20FFFFFF)
                 ),
-                singleLine = true
+                singleLine = true,
+                enabled = !isLoading
             )
 
             // Password field
@@ -170,42 +197,65 @@ fun AuthScreen(
                     focusedContainerColor = Color(0x20FFFFFF),
                     unfocusedContainerColor = Color(0x20FFFFFF)
                 ),
-                singleLine = true
+                singleLine = true,
+                enabled = !isLoading
             )
 
             // Action button
             Button(
-                onClick = {
-                    // כרגע פשוט נדמה הצלחה - בהמשך נוסיף לוגיקה אמיתית
-                    onAuthSuccess()
-                },
+                onClick = { handleSignIn() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF9C27B0)
+                    containerColor = Color(0xFF9C27B0),
+                    disabledContainerColor = Color(0xFF666666)
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading
             ) {
-                Text(
-                    text = if (isSignUp) "Create Account" else "Sign In",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Please wait...")
+                } else {
+                    Text(
+                        text = "Sign In",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // Switch between sign in/up
             TextButton(
-                onClick = { isSignUp = !isSignUp }
+                onClick = {
+                    // Go to artist signup screen
+                    onAuthSuccess("", "", "")
+                },
+                enabled = !isLoading
             ) {
                 Text(
-                    text = if (isSignUp) "Already have an account? Sign In" else "Don't have an account? Sign Up",
+                    text = "Don't have an account? Sign Up",
                     color = Color(0xFF9C27B0),
                     fontSize = 14.sp
                 )
             }
         }
     }
+}
+
+// Helper function to format name with proper capitalization
+private fun formatName(fullName: String): String {
+    return fullName.split(" ")
+        .joinToString(" ") { word ->
+            word.lowercase().replaceFirstChar { char ->
+                if (char.isLowerCase()) char.titlecase() else char.toString()
+            }
+        }
 }

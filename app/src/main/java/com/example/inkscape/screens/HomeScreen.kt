@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,16 +19,29 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import coil.compose.AsyncImage
 import com.example.inkscape.R
 import com.example.inkscape.components.StyleGrid
+
+// Data class for user state
+data class UserState(
+    val userId: String,
+    val fullName: String,
+    val profileImageUrl: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun HomeScreen(
     onSignInClick: () -> Unit = {},
-    onSignUpClick: () -> Unit = {}
+    onSignUpClick: () -> Unit = {},
+    onLogoutClick: () -> Unit = {},
+    // User state - null means not logged in
+    currentUser: UserState? = null
 ) {
     var searchText by remember { mutableStateOf("") }
     var showStylePicker by remember { mutableStateOf(false) }
@@ -37,50 +52,121 @@ fun HomeScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Sign In/Up buttons (top right)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalArrangement = Arrangement.End
-        ) {
-            OutlinedButton(
-                onClick = onSignInClick,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Color.White
-                ),
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = Color(0xFF9C27B0)
-                ),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.height(36.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+        // Top right section - Auth buttons or User info
+        if (currentUser != null) {
+            // Show logged in user
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // User profile image
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF424242)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (currentUser.profileImageUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = currentUser.profileImageUrl,
+                            contentDescription = "Profile Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Profile",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // User name
                 Text(
-                    text = "Sign In",
-                    fontSize = 12.sp,
+                    text = currentUser.fullName,
+                    color = Color.White,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Logout button
+                OutlinedButton(
+                    onClick = onLogoutClick,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = Color(0xFF9C27B0)
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.height(36.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                ) {
+                    Text(
+                        text = "Logout",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Button(
-                onClick = onSignUpClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF9C27B0)
-                ),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.height(36.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+        } else {
+            // Show Sign In/Up buttons (original code)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalArrangement = Arrangement.End
             ) {
-                Text(
-                    text = "Sign Up",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                OutlinedButton(
+                    onClick = onSignInClick,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = Color(0xFF9C27B0)
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.height(36.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                ) {
+                    Text(
+                        text = "Sign In",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = onSignUpClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF9C27B0)
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.height(36.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                ) {
+                    Text(
+                        text = "Sign Up",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
 

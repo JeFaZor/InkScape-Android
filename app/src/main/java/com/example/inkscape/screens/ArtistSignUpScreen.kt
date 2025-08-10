@@ -17,7 +17,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +29,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,12 +46,20 @@ fun ArtistSignUpScreen(
     onBackClick: () -> Unit = {},
     onSignUpComplete: () -> Unit = {}
 ) {
+    // Basic registration fields
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    // Profile fields
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
     var workImages by remember { mutableStateOf(listOf<Uri?>(null, null, null)) }
     var selectedStyles by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedLocation by remember { mutableStateOf<SelectedLocation?>(null) }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+
+    // Status
     var isUploading by remember { mutableStateOf(false) }
     var uploadStatus by remember { mutableStateOf("") }
 
@@ -79,11 +92,15 @@ fun ArtistSignUpScreen(
         scope.launch {
             try {
                 isUploading = true
-                uploadStatus = "Uploading profile..."
+                uploadStatus = "Creating your account..."
+
+                val fullName = "$firstName $lastName"
 
                 val artistId = firebaseManager.createArtistProfile(
                     email = email,
                     password = password,
+                    firstName = firstName,
+                    lastName = lastName,
                     profileImageUri = profileImageUri,
                     workImageUris = workImages,
                     selectedStyles = selectedStyles,
@@ -95,7 +112,7 @@ fun ArtistSignUpScreen(
                     studioName = null
                 )
 
-                uploadStatus = "Success! Profile created with ID: $artistId"
+                uploadStatus = "Success! Profile created!"
                 kotlinx.coroutines.delay(2000)
                 onSignUpComplete()
             } catch (e: Exception) {
@@ -133,7 +150,7 @@ fun ArtistSignUpScreen(
 
             item {
                 Text(
-                    text = "Set Up Your Artist Profile",
+                    text = "Create Your Artist Account",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -144,7 +161,7 @@ fun ArtistSignUpScreen(
 
             item {
                 Text(
-                    text = "Add your profile info and showcase your work",
+                    text = "Join the tattoo community and showcase your work",
                     fontSize = 16.sp,
                     color = Color(0xFFD1C4E9),
                     textAlign = TextAlign.Center,
@@ -173,6 +190,154 @@ fun ArtistSignUpScreen(
                 }
             }
 
+            // Basic Registration Fields
+            // Basic Registration Fields
+            item {
+                Column(
+                    modifier = Modifier.padding(bottom = 32.dp)
+                ) {
+                    Text(
+                        text = "Basic Information",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    // First Name and Last Name in the same row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // First Name
+                        OutlinedTextField(
+                            value = firstName,
+                            onValueChange = { firstName = it },
+                            label = { Text("First Name") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "First Name",
+                                    tint = Color(0xFF9C27B0)
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF9C27B0),
+                                unfocusedBorderColor = Color(0xFF424242),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedLabelColor = Color(0xFF9C27B0),
+                                unfocusedLabelColor = Color(0xFFBDBDBD),
+                                cursorColor = Color(0xFF9C27B0),
+                                focusedContainerColor = Color(0x20FFFFFF),
+                                unfocusedContainerColor = Color(0x20FFFFFF)
+                            ),
+                            singleLine = true,
+                            enabled = !isUploading
+                        )
+
+                        // Last Name
+                        OutlinedTextField(
+                            value = lastName,
+                            onValueChange = { lastName = it },
+                            label = { Text("Last Name") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Last Name",
+                                    tint = Color(0xFF9C27B0)
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF9C27B0),
+                                unfocusedBorderColor = Color(0xFF424242),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedLabelColor = Color(0xFF9C27B0),
+                                unfocusedLabelColor = Color(0xFFBDBDBD),
+                                cursorColor = Color(0xFF9C27B0),
+                                focusedContainerColor = Color(0x20FFFFFF),
+                                unfocusedContainerColor = Color(0x20FFFFFF)
+                            ),
+                            singleLine = true,
+                            enabled = !isUploading
+                        )
+                    }
+
+                    // Email (full width)
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = "Email",
+                                tint = Color(0xFF9C27B0)
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF9C27B0),
+                            unfocusedBorderColor = Color(0xFF424242),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedLabelColor = Color(0xFF9C27B0),
+                            unfocusedLabelColor = Color(0xFFBDBDBD),
+                            cursorColor = Color(0xFF9C27B0),
+                            focusedContainerColor = Color(0x20FFFFFF),
+                            unfocusedContainerColor = Color(0x20FFFFFF)
+                        ),
+                        singleLine = true,
+                        enabled = !isUploading
+                    )
+
+                    // Password (full width)
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Password") },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                    tint = Color(0xFF9C27B0)
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF9C27B0),
+                            unfocusedBorderColor = Color(0xFF424242),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedLabelColor = Color(0xFF9C27B0),
+                            unfocusedLabelColor = Color(0xFFBDBDBD),
+                            cursorColor = Color(0xFF9C27B0),
+                            focusedContainerColor = Color(0x20FFFFFF),
+                            unfocusedContainerColor = Color(0x20FFFFFF)
+                        ),
+                        singleLine = true,
+                        enabled = !isUploading
+                    )
+                }
+            }
+
+            // Profile Picture Section
             item {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -225,6 +390,7 @@ fun ArtistSignUpScreen(
                 }
             }
 
+            // Work Images Section
             item {
                 Column(
                     modifier = Modifier.padding(bottom = 32.dp)
@@ -284,6 +450,7 @@ fun ArtistSignUpScreen(
                 }
             }
 
+            // Location Section
             item {
                 Column(
                     modifier = Modifier.padding(bottom = 32.dp)
@@ -305,6 +472,7 @@ fun ArtistSignUpScreen(
                 }
             }
 
+            // Styles Section
             item {
                 Column(
                     modifier = Modifier.padding(bottom = 32.dp)
@@ -382,10 +550,11 @@ fun ArtistSignUpScreen(
 
             item { Spacer(modifier = Modifier.height(32.dp)) }
 
+            // Complete Profile Button
             item {
                 Button(
                     onClick = { uploadToFirebase() },
-                    enabled = canComplete(profileImageUri, workImages, selectedStyles, selectedLocation) && !isUploading,
+                    enabled = canComplete(firstName, lastName, email, password, profileImageUri, workImages, selectedStyles, selectedLocation) && !isUploading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -402,7 +571,7 @@ fun ArtistSignUpScreen(
                         )
                     } else {
                         Text(
-                            text = "Complete Profile",
+                            text = "Create Artist Account",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -416,12 +585,20 @@ fun ArtistSignUpScreen(
 }
 
 private fun canComplete(
+    firstName: String,
+    lastName: String,
+    email: String,
+    password: String,
     profileImage: Uri?,
     workImages: List<Uri?>,
     selectedStyles: List<String>,
     selectedLocation: SelectedLocation?
 ): Boolean {
-    return profileImage != null &&
+    return firstName.isNotBlank() &&
+            lastName.isNotBlank() &&
+            email.isNotBlank() &&
+            password.isNotBlank() &&
+            profileImage != null &&
             workImages.any { it != null } &&
             selectedStyles.isNotEmpty() &&
             selectedLocation != null
