@@ -187,7 +187,7 @@ fun SearchResults(
                 if (searchCriteria.isNotEmpty()) {
                     Text(
                         text = "Found ${artists.size} artists for: ${searchCriteria.joinToString(" • ")}",
-                        fontSize = 14.sp,
+                        fontSize = 12.sp,
                         color = Color(0xFFD1C4E9),
                         modifier = Modifier.padding(top = 4.dp)
                     )
@@ -259,10 +259,8 @@ fun SearchResults(
 
             artists.isNotEmpty() -> {
                 // Results grid
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(artists) { artist ->
                         ArtistResultCard(artist = artist)
@@ -277,15 +275,14 @@ fun SearchResults(
 fun ArtistResultCard(
     artist: ArtistProfile,
     modifier: Modifier = Modifier
-
-
 ) {
     var showImageDialog by remember { mutableStateOf(false) }
     var selectedImageUrl by remember { mutableStateOf("") }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(220.dp),
+            .height(280.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF1A1A1A)
         ),
@@ -294,31 +291,30 @@ fun ArtistResultCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp)
+                .padding(16.dp)
         ) {
             // Profile image and name
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Profile image (60dp = medium size)
+                // Profile image
                 AsyncImage(
                     model = artist.profileImageUrl.takeIf { it.isNotEmpty() },
                     contentDescription = "Profile Image",
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(40.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop,
                     fallback = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_camera)
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 // Artist name
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Extract name from studio name or use a default format
                     val displayName = if (artist.studioName.isNotEmpty()) {
                         artist.studioName
                     } else {
@@ -326,8 +322,8 @@ fun ArtistResultCard(
                     }
 
                     Text(
-                        text = artist.fullName ?: "Unknown Artist",
-                        fontSize = 16.sp,
+                        text = artist.fullName ?: displayName,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         maxLines = 1,
@@ -336,12 +332,12 @@ fun ArtistResultCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Work images - 3 in a row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 repeat(3) { index ->
                     val imageUrl = if (index < artist.workImageUrls.size) {
@@ -354,7 +350,7 @@ fun ArtistResultCard(
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(0.8f)
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .background(Color(0xFF2A2A2A))
                             .clickable {
                                 if (imageUrl != null && imageUrl.isNotEmpty()) {
@@ -375,58 +371,61 @@ fun ArtistResultCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Styles and location
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Show styles
-                if (artist.styles.isNotEmpty()) {
-                    Text(
-                        text = artist.styles.take(2).joinToString(" • "),
-                        fontSize = 12.sp,
-                        color = Color(0xFF9C27B0),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            // Styles section
+            if (artist.styles.isNotEmpty()) {
+                Text(
+                    text = artist.styles.take(3).joinToString(" • "),
+                    fontSize = 14.sp,
+                    color = Color(0xFF9C27B0),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
 
-                // Show location if available
-                if (artist.address.isNotEmpty()) {
-                    Text(
-                        text = artist.address,
-                        fontSize = 11.sp,
-                        color = Color(0xFF9E9E9E),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-                // Image Dialog
-                if (showImageDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showImageDialog = false },
-                        title = { Text("Work Image", color = Color.White) },
-                        text = {
-                            AsyncImage(
-                                model = selectedImageUrl,
-                                contentDescription = "Full size image",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1f),
-                                contentScale = ContentScale.Fit
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(onClick = { showImageDialog = false }) {
-                                Text("Close", color = Color(0xFF9C27B0))
-                            }
-                        },
-                        containerColor = Color(0xFF1A1A1A)
-                    )
-                }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Location section
+            if (artist.address.isNotEmpty()) {
+                Text(
+                    text = artist.address,
+                    fontSize = 13.sp,
+                    color = Color(0xFFD1C4E9),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 16.sp
+                )
             }
         }
+    }
+
+    // Image dialog
+    if (showImageDialog && selectedImageUrl.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { showImageDialog = false },
+            title = { Text("Work Image", color = Color.White) },
+            text = {
+                AsyncImage(
+                    model = selectedImageUrl,
+                    contentDescription = "Work Image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showImageDialog = false }
+                ) {
+                    Text("Close", color = Color(0xFF9C27B0))
+                }
+            },
+            containerColor = Color(0xFF1A1A1A)
+        )
     }
 }

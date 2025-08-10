@@ -45,7 +45,7 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true  // הוסף את זה!
+        buildConfig = true
     }
 
     packaging {

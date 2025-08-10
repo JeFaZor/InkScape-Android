@@ -42,7 +42,6 @@ fun HomeScreen(
     onSignInClick: () -> Unit = {},
     onSignUpClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
-    // User state - null means not logged in
     currentUser: UserState? = null
 ) {
     var searchText by remember { mutableStateOf("") }
@@ -60,120 +59,122 @@ fun HomeScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Top right section - Auth buttons or User info
-        if (currentUser != null) {
-            // Show logged in user
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // User profile image
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF424242)),
-                    contentAlignment = Alignment.Center
+        // Top bar with logo and auth buttons
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Logo on the left
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "InkScape Logo",
+                modifier = Modifier.size(120.dp)
+            )
+
+            // Auth buttons on the right
+            if (currentUser != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (currentUser.profileImageUrl.isNotEmpty()) {
-                        AsyncImage(
-                            model = currentUser.profileImageUrl,
-                            contentDescription = "Profile Image",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Profile",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF424242)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (currentUser.profileImageUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = currentUser.profileImageUrl,
+                                contentDescription = "Profile Image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Profile",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = currentUser.fullName,
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    OutlinedButton(
+                        onClick = onLogoutClick,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = Color.White
+                        ),
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = Color(0xFF9C27B0)
+                        ),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                    ) {
+                        Text(
+                            text = "Logout",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
+            } else {
+                Row {
+                    OutlinedButton(
+                        onClick = onSignInClick,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = Color.White
+                        ),
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = Color(0xFF9C27B0)
+                        ),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.height(36.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                    ) {
+                        Text(
+                            text = "Sign In",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                // User name
-                Text(
-                    text = currentUser.fullName,
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Logout button
-                OutlinedButton(
-                    onClick = onLogoutClick,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White
-                    ),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = Color(0xFF9C27B0)
-                    ),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.height(36.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                ) {
-                    Text(
-                        text = "Logout",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        } else {
-            // Show Sign In/Up buttons (original code)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                OutlinedButton(
-                    onClick = onSignInClick,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White
-                    ),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = Color(0xFF9C27B0)
-                    ),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.height(36.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                ) {
-                    Text(
-                        text = "Sign In",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Button(
-                    onClick = onSignUpClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF9C27B0)
-                    ),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.height(36.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                ) {
-                    Text(
-                        text = "Sign Up",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Button(
+                        onClick = onSignUpClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF9C27B0)
+                        ),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.height(36.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                    ) {
+                        Text(
+                            text = "Sign Up",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
@@ -181,59 +182,37 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 48.dp)
+                .padding(horizontal = 24.dp, vertical = 140.dp)
                 .animateContentSize(
                     animationSpec = tween(
                         durationMillis = 400,
                         easing = FastOutSlowInEasing
                     )
                 ),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = if (showStylePicker || showLocationPicker || showSearchResults) Arrangement.Top else Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             if (!showStylePicker && !showLocationPicker && !showSearchResults) {
-                Spacer(modifier = Modifier.weight(1f))
-            } else {
-                Spacer(modifier = Modifier.height(80.dp))
-            }
-
-            // Logo (always visible)
-            Image(
-                painter = painterResource(id = R.drawable.logo),
-                contentDescription = "Inkscape Logo",
-                modifier = Modifier
-                    .size(100.dp)
-                    .padding(bottom = 16.dp)
-            )
-
-            AnimatedVisibility(
-                visible = !showStylePicker && !showLocationPicker && !showSearchResults,
-                enter = fadeIn(
-                    animationSpec = tween(
-                        durationMillis = 400,
-                        delayMillis = 100
-                    )
-                ),
-                exit = fadeOut(animationSpec = tween(200))
-            ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Main title
                     Text(
-                        text = "Find Your Perfect\nTattoo Artist",
+                        text = "Find Your Perfect",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 36.sp,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        textAlign = TextAlign.Center
                     )
 
-                    // Subtitle
                     Text(
-                        text = "Search by location or explore to find the perfect match.",
+                        text = "Tattoo Artist",
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF9C27B0),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        text = "Discover talented artists, explore styles, and book your next masterpiece",
                         fontSize = 16.sp,
                         color = Color(0xFFD1C4E9),
                         textAlign = TextAlign.Center,
@@ -243,7 +222,6 @@ fun HomeScreen(
                 }
             }
 
-            // Search field
             OutlinedTextField(
                 value = searchText,
                 onValueChange = { searchText = it },
@@ -276,7 +254,6 @@ fun HomeScreen(
                 singleLine = true
             )
 
-            // Search button
             Button(
                 onClick = {
                     if (searchText.isNotEmpty() || selectedStyle != null || selectedLocation != null) {
@@ -311,14 +288,12 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Filter buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Style button
                 OutlinedButton(
                     onClick = {
                         showStylePicker = !showStylePicker
@@ -348,7 +323,6 @@ fun HomeScreen(
                     )
                 }
 
-                // Location button
                 OutlinedButton(
                     onClick = {
                         showLocationPicker = !showLocationPicker
@@ -379,23 +353,21 @@ fun HomeScreen(
                 }
             }
 
-            // Style picker (when expanded)
             AnimatedVisibility(
                 visible = showStylePicker,
-                enter = fadeIn(
-                    animationSpec = tween(300, delayMillis = 200)
-                ) + expandVertically(
-                    animationSpec = tween(400)
+                enter = expandVertically(
+                    animationSpec = tween(300)
+                ) + fadeIn(
+                    animationSpec = tween(300)
                 ),
                 exit = fadeOut(
-                    animationSpec = tween(200)
+                    animationSpec = tween(300)
                 ) + shrinkVertically(
                     animationSpec = tween(300)
                 )
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(24.dp))
-
                     StyleGrid(
                         onStyleSelected = { style ->
                             selectedStyle = style
@@ -406,23 +378,21 @@ fun HomeScreen(
                 }
             }
 
-            // Location picker (when expanded)
             AnimatedVisibility(
                 visible = showLocationPicker,
-                enter = fadeIn(
-                    animationSpec = tween(300, delayMillis = 200)
-                ) + expandVertically(
-                    animationSpec = tween(400)
+                enter = expandVertically(
+                    animationSpec = tween(300)
+                ) + fadeIn(
+                    animationSpec = tween(300)
                 ),
                 exit = fadeOut(
-                    animationSpec = tween(200)
+                    animationSpec = tween(300)
                 ) + shrinkVertically(
                     animationSpec = tween(300)
                 )
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(24.dp))
-
                     LocationSearchFilter(
                         onLocationSelected = { locationName, radiusKm, latitude, longitude ->
                             selectedLocation = locationName
@@ -431,21 +401,22 @@ fun HomeScreen(
                             selectedLongitude = longitude
                             showLocationPicker = false
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(400.dp)
                     )
                 }
             }
 
-            // Search Results (when visible)
             AnimatedVisibility(
                 visible = showSearchResults,
-                enter = fadeIn(
-                    animationSpec = tween(300, delayMillis = 200)
-                ) + expandVertically(
-                    animationSpec = tween(400)
+                enter = expandVertically(
+                    animationSpec = tween(300)
+                ) + fadeIn(
+                    animationSpec = tween(300)
                 ),
                 exit = fadeOut(
-                    animationSpec = tween(200)
+                    animationSpec = tween(300)
                 ) + shrinkVertically(
                     animationSpec = tween(300)
                 )
@@ -465,21 +436,7 @@ fun HomeScreen(
                 }
             }
 
-            // Dynamic spacer for bottom
-            if (!showStylePicker && !showLocationPicker && !showSearchResults) {
-                Spacer(modifier = Modifier.weight(1f))
 
-                // Bottom text
-                Text(
-                    text = "Join thousands of tattoo enthusiasts finding their perfect artist",
-                    fontSize = 14.sp,
-                    color = Color(0xFF9E9E9E),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-            } else {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
         }
     }
 }
